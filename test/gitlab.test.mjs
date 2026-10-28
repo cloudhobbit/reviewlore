@@ -4,7 +4,7 @@ import { mkdtempSync, writeFileSync, rmSync, realpathSync, mkdirSync } from "nod
 import { tmpdir } from "node:os";
 import { join, resolve, dirname, delimiter } from "node:path";
 import { spawnSync } from "node:child_process";
-import { mapDiscussions, createGitLabTransport, fetchGitLab, resolveGitLabToken } from "../lib/providers/gitlab.mjs";
+import { mapDiscussions, createGitLabTransport, fetchGitLab, fetchGitLabCorpus, resolveGitLabToken, noGitLabTokenMessage } from "../lib/providers/gitlab.mjs";
 import { extractCandidates } from "../lib/extract.mjs";
 import { buildOutput } from "../lib/output.mjs";
 import { rawComments } from "../lib/raw.mjs";
@@ -43,7 +43,7 @@ function fakeFetch() {
   const calls = [];
   let limited = false;
   const fn = async (url, init) => {
-    calls.push({ url: String(url), token: init.headers["PRIVATE-TOKEN"] });
+    calls.push({ url: String(url), auth: init.headers.Authorization });
     const u = new URL(url);
     const json = (body, headers = {}) => new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json", ...headers } });
     if (!limited) {
@@ -68,7 +68,7 @@ test("GitLab transport: token header, pagination, 429 retry; fetchGitLab end to 
   const transport = createGitLabTransport({ host: "gitlab.com", token: "glpat-xxx", fetchImpl: fn, sleep: async (ms) => waits.push(ms) });
   const out = await fetchGitLab(transport, { repoPath: "group/sub/proj", since: SINCE });
   assert.deepEqual(waits, [1000]);
-  assert.ok(calls.every((c) => c.token === "glpat-xxx"));
+  assert.ok(calls.every((c) => c.auth === "Bearer glpat-xxx"));
   assert.ok(calls.some((c) => c.url.includes("updated_after=2026-08-01")));
   assert.deepEqual(Object.keys(out.prAuthors).sort(), ["7", "8"], "MR 3 is older than the window");
   assert.equal(out.issueComments.length, 3);
@@ -91,6 +91,48 @@ test("GitLab errors carry the status and GitLab's message, never the token", asy
   });
   assert.equal(resolveGitLabToken({ env: { GITLAB_TOKEN: "a", GITLAB_ACCESS_TOKEN: "b" } }).token, "a");
   assert.equal(resolveGitLabToken({ env: { GITHUB_TOKEN: "gh" } }), null, "a GitHub token is never used for GitLab");
+});
+
+test("GitLab environment tokens go only to gitlab.com, GITLAB_HOST, or the CI job's own instance", () => {
+  const env = { GITLAB_TOKEN: "env-token" };
+  assert.equal(resolveGitLabToken({ host: "gitlab.com", env }).token, "env-token");
+  // A checkout whose origin names some other GitLab-looking host doesn't get it…
+  assert.equal(resolveGitLabToken({ host: "gitlab.evil.io", env }), null);
+  assert.match(noGitLabTokenMessage("gitlab.acme.corp"), /GITLAB_HOST=gitlab\.acme\.corp/);
+  // …unless the user named that host, or a GitLab CI job runs there.
+  assert.equal(resolveGitLabToken({ host: "gitlab.acme.corp", env: { ...env, GITLAB_HOST: "https://gitlab.acme.corp/" } }).token, "env-token");
+  assert.equal(resolveGitLabToken({ host: "git.acme.corp", env: { ...env, GITLAB_CI: "true", CI_SERVER_HOST: "git.acme.corp" } }).token, "env-token");
+  assert.equal(resolveGitLabToken({ host: "git.acme.corp", env: { ...env, CI_SERVER_HOST: "git.acme.corp" } }), null, "CI_SERVER_HOST counts only inside GitLab CI");
+  assert.equal(resolveGitLabToken({ host: "gitlab.evil.io", token: "flag", env }).token, "flag", "--token is the user's explicit choice");
+});
+
+test("a GitLab redirect to another host doesn't carry the token", async () => {
+  const http = await import("node:http");
+  const listen = (s) => new Promise((r) => s.listen(0, "127.0.0.1", () => r(s.address().port)));
+  let seen = null;
+  const other = http.createServer((req, res) => { seen = req.headers; res.setHeader("content-type", "application/json"); res.end("[]"); });
+  const otherPort = await listen(other);
+  // An SSO gateway or proxy in front of a self-managed GitLab.
+  const gitlab = http.createServer((req, res) => { res.statusCode = 302; res.setHeader("location", `http://localhost:${otherPort}/login`); res.end(); });
+  const port = await listen(gitlab);
+  try {
+    const transport = createGitLabTransport({ host: "x", token: "glpat-redirect-test", baseUrl: `http://127.0.0.1:${port}/api/v4` });
+    await transport.getPage("/projects/g%2Fp/merge_requests");
+    assert.ok(seen, "the redirect was followed");
+    assert.doesNotMatch(JSON.stringify(seen), /glpat-redirect-test/);
+  } finally {
+    other.close();
+    gitlab.close();
+  }
+});
+
+test("a GitLab corpus is stamped with the time its fetch started", async () => {
+  let t = Date.parse("2026-10-01T00:00:00Z");
+  const now = () => (t += 60_000);
+  const { fn } = fakeFetch();
+  const transport = createGitLabTransport({ host: "gitlab.com", token: "glpat-xxx", fetchImpl: fn, sleep: async () => {} });
+  const out = await fetchGitLabCorpus(transport, { owner: "group/sub", repo: "proj", host: "gitlab.com", since: SINCE, monthsBack: 6, out: { write() {}, isTTY: false }, now });
+  assert.equal(out.meta.fetched_at, "2026-10-01T00:01:00.000Z");
 });
 
 test("CLI on a GitLab checkout: committed corpus without a token; clear message without one", () => {

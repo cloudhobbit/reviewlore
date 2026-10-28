@@ -125,8 +125,10 @@ Create a personal access token with the `read_api` scope (GitLab →
 Preferences → Access tokens) and export it as `GITLAB_TOKEN`. Public
 projects need one too: gitlab.com lists merge requests anonymously but
 answers 401 for their comments. A GitHub
-token is never used for GitLab. For a self-managed GitLab whose host
-name doesn't contain "gitlab", pass `--provider gitlab --host <host>`.
+token is never used for GitLab. For a self-managed GitLab, also set
+`GITLAB_HOST=<host>`: `GITLAB_TOKEN` alone is only sent to gitlab.com, so
+a cloned repository can't point it at another server. If the host name
+doesn't contain "gitlab", pass `--provider gitlab --host <host>` too.
 
 ### GitHub Enterprise: certificate errors ("unable to get local issuer certificate")
 

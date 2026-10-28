@@ -158,8 +158,8 @@ If a command fails:
   set `GH_ENTERPRISE_TOKEN`), export `GITHUB_TOKEN`, or ask a teammate to
   run `reviewlore publish-corpus` and commit the corpus file. For a GitLab
   repository, the user exports `GITLAB_TOKEN` (a personal access token with
-  the `read_api` scope). Never look for, read, or print credentials
-  yourself.
+  the `read_api` scope), plus `GITLAB_HOST=<host>` for a self-managed
+  GitLab. Never look for, read, or print credentials yourself.
 - **Missing dependencies** (`Cannot find package` or "needs reviewlore's
   npm dependencies") — relay the message's fix (reinstall the plugin with
   npm on PATH), then stop.

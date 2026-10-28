@@ -49,6 +49,12 @@ test("resolveToken: per-host order, and no cross-host leaks", () => {
   const actions = { GITHUB_ACTIONS: "true", GITHUB_TOKEN: "actions", GITHUB_API_URL: "https://ghe.corp/api/v3" };
   assert.equal(resolveToken({ host: "ghe.corp", env: actions, gh: none }).token, "actions");
   assert.equal(resolveToken({ host: "other.corp", env: actions, gh: none }), null);
+  // Hosts --api-url can name that aren't recognisably GitHub (a dotless
+  // intranet name, a GitLab-looking host) are enterprise servers too.
+  for (const host of ["ghes:8080", "git-internal", "gitlab.acme.io"]) {
+    assert.equal(resolveToken({ host, env: { GITHUB_TOKEN: "dotcom", GH_TOKEN: "dotcom" }, gh: none }), null, host);
+    assert.equal(resolveToken({ host, env: { GITHUB_TOKEN: "dotcom", GH_ENTERPRISE_TOKEN: "corp" }, gh: none }).token, "corp", host);
+  }
 });
 
 test("noTokenMessage names the host and the variable, never a value", async () => {
