@@ -8,6 +8,8 @@ import {
   fetchReviewSubmissionsGraphQL,
   fetchAll,
   windowFraction,
+  emptyStreams,
+  FetchInterrupted,
 } from "../lib/fetchers.mjs";
 import { fakeGraphQL, isBatch, isList } from "./helpers/fake-graphql.mjs";
 
@@ -310,4 +312,32 @@ test("GraphQL reviews: batches run in parallel (at most 4), deleted PRs are skip
   assert.equal(calls.filter(isBatch).length, 8, "200 PRs / 25");
   assert.equal(r.reviews.length, 200 - 8, "one skipped PR per batch");
   assert.equal(Object.keys(r.prAuthors).length, 200);
+});
+
+test("a PR first listed by an incremental fetch keeps its older in-window reviews", async () => {
+  const SINCE = new Date("2026-01-01T00:00:00Z");
+  const day = (n) => new Date(SINCE.getTime() + n * 86400000).toISOString();
+  // 250 PRs, newest-updated first, each with one review on its update day.
+  let prs = Array.from({ length: 250 }, (_, i) => ({
+    number: 250 - i, title: `PR ${250 - i}`, updatedAt: day(200 - i * 0.5), author: { login: "a", __typename: "User" },
+    reviews: [{ id: 1000 + i, url: `u${i}`, state: "COMMENTED", body: "please fix", submittedAt: day(200 - i * 0.5), author: { login: "rv", __typename: "User" } }],
+  }));
+  const octokit = { graphql: (q, v) => fakeGraphQL(prs).graphql(q, v) };
+  // The first fetch lists one page, then its time budget runs out…
+  const state = emptyStreams().reviews;
+  await assert.rejects(
+    fetchReviewSubmissionsGraphQL(octokit, { owner: "o", repo: "r", since: SINCE, state, shouldStop: () => true }),
+    FetchInterrupted,
+  );
+  // …PR #1, not listed yet, is updated while it's paused, so it jumps ahead
+  // of the listing cursor and the resumed run never sees it.
+  const pr1 = prs.find((p) => p.number === 1);
+  prs = [{ ...pr1, updatedAt: day(202) }, ...prs.filter((p) => p !== pr1)];
+  const resumed = await fetchReviewSubmissionsGraphQL(octokit, { owner: "o", repo: "r", since: SINCE, state });
+  assert.equal(resumed.reviews.length, 249);
+  // The next incremental fetch lists it (updated after the first run
+  // started) and keeps its review from day 75.5, inside the window.
+  const startedAt = new Date(day(201));
+  const next = await fetchReviewSubmissionsGraphQL(octokit, { owner: "o", repo: "r", since: startedAt, keepSince: SINCE, state: emptyStreams().reviews });
+  assert.deepEqual(next.reviews.map((r) => r.pr_number), [1]);
 });

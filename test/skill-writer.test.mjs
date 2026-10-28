@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, writeFileSync, rmSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { renderRule, writeSkills, renderSummary, yamlQuote } from "../lib/skill-writer.mjs";
+import { renderRule, renderLLMRule, writeSkills, renderSummary, yamlQuote } from "../lib/skill-writer.mjs";
+import { parseRuleFile } from "../lib/rule-files.mjs";
 
 const sampleCluster = {
   label: ["test", "missing", "edge"],
@@ -124,4 +125,21 @@ test("writeSkills never overwrites a plugin-written rule, even with force", () =
   } finally {
     rmSync(target, { recursive: true, force: true });
   }
+});
+
+test("--llm rules keep their examples readable, like heuristic ones", () => {
+  const items = [1, 2, 3].map((n) => ({ sentence: `Please add a changeset for this change ${n}.`, author: `rv${n}`, pr: n, url: `https://github.com/o/r/pull/${n}#discussion_r${n}`, path: "src/a.ts", createdAt: "2026-05-01T00:00:00Z" }));
+  const cluster = { label: ["changeset"], items, paths: ["src/a.ts"], occurrences: 3, distinctAuthors: 3, distinctPRs: 3, authors: ["rv1", "rv2", "rv3"], kind: "request" };
+  const synth = { name: "Add a changeset", rule: "Add a changeset.", why: "Releases.", when_to_apply: "Always." };
+  for (const { slug, body } of [renderRule(cluster), renderLLMRule(cluster, synth)]) {
+    assert.equal(parseRuleFile(body, `pr-feedback-${slug}.md`).examples.length, 3, slug);
+  }
+});
+
+test("a file name cut to length never ends in a dash", () => {
+  const cluster = { label: ["x"], items: [{ sentence: "x", author: "a", pr: 1, url: "u" }], paths: [], occurrences: 3, distinctAuthors: 2, distinctPRs: 2, authors: ["a", "b"] };
+  // The 60-character cut lands right after "translation".
+  const { slug, body } = renderLLMRule(cluster, { name: "Internationalization placeholders need reviewed translation everywhere", rule: "r", why: "w", when_to_apply: "a" });
+  assert.doesNotMatch(slug, /-$/);
+  assert.ok(parseRuleFile(body, `pr-feedback-${slug}.md`));
 });

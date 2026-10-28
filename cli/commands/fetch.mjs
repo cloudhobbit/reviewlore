@@ -143,7 +143,7 @@ export async function main(argv) {
 
   try {
     const output = await fetcher.fetch({
-      since, monthsBack, out: process.stderr, mode: process.env.REVIEWLORE_FETCH, concurrency: fetchConcurrency(),
+      since, keepSince: sinceFromMonths(monthsBack), monthsBack, out: process.stderr, mode: process.env.REVIEWLORE_FETCH, concurrency: fetchConcurrency(),
       checkpoint: Boolean(args.cache), budgetMs,
     });
 

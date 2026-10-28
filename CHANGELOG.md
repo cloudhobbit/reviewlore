@@ -10,8 +10,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **GitLab tokens no longer follow redirects to other hosts.** The token
+  is sent as `Authorization: Bearer` (dropped on a cross-origin redirect)
+  instead of a `PRIVATE-TOKEN` header (which was forwarded).
+- **`GITLAB_TOKEN` is sent only to gitlab.com**, the host in `GITLAB_HOST`,
+  or the instance a GitLab CI job runs on — not to whatever GitLab-looking
+  host a checkout's `origin` names. Self-managed GitLab: set `GITLAB_HOST`.
+- **`--api-url` on a host that isn't recognisably github.com or GHE.com**
+  (an intranet name, `ghes:8080`) now gets the enterprise tokens, never
+  `GH_TOKEN` / `GITHUB_TOKEN`.
+
 ### Fixed
 
+- **Incremental fetches no longer lose old comments and reviews** that
+  were edited, or whose PR was first listed, after the previous fetch
+  started (including PRs updated while a `--time-budget` fetch was
+  paused): they keep everything created in the window, not only since the
+  last fetch. Edited comments are refreshed in the cache.
+- GitLab corpora are stamped with the time the fetch started, so notes
+  written during a long fetch aren't skipped by the next one.
+- The MCP server no longer hangs when the background index build dies
+  (out of memory, killed); the call fails and the next one retries.
+- `rules status` no longer flags `no-recent-support` when older matches
+  crowd recent ones out of the top 50.
+- `run --demo` (and `reviewlore --demo`) runs the bundled demo instead of
+  ignoring `--demo` and starting a real run; other commands refuse it.
+- `run --format agents` and `reviewlore export --to agents` keep separate
+  sections in `AGENTS.md` (the generator's markers are now
+  `reviewlore:generated:start/end`), and `run --format cursor --force`
+  never overwrites a file `export` wrote.
+- `$` in rule text (`$HOME`, `$&`) is no longer mangled when a managed
+  block in AGENTS.md, CLAUDE.md, REVIEW.md, CONVENTIONS.md and similar
+  files is rewritten.
+- Rules written with `--llm` keep their cited examples readable (they
+  used a different heading), so the manifest, `export` and `rules status`
+  see their evidence.
+- A rule file name cut to length no longer ends in `-` (such files
+  couldn't be read back).
+- `generate` records the rules it writes, as `run` does.
+- `ssh.github.com` and `github.com:443` remotes are github.com.
+- Owner and repository names compare case-insensitively (a committed
+  corpus for `Acme/App` serves `acme/app`).
+- Rule files citing GitHub Enterprise or GitLab links have their sources
+  read (only github.com links were).
 - `package.json`'s `bin` path no longer starts with `./`, which npm 11
   rewrote at publish with a misleading "invalid and removed" warning.
 

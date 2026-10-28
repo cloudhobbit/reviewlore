@@ -152,3 +152,43 @@ test("reviewlore export CLI: dry run writes nothing; --to is required", () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("export and `run --format agents|cursor` never overwrite each other", async () => {
+  const { write: writeAgents } = await import("../lib/renderers/agents.mjs");
+  const { write: writeCursor } = await import("../lib/renderers/cursor.mjs");
+  const items = [1, 2, 3].map((n) => ({ sentence: "Document new options in the docs folder.", author: `r${n}`, pr: n, url: `https://github.com/o/r/pull/${n}`, path: "packages/a.ts", kind: "request" }));
+  const cluster = { label: ["document", "new", "options", "and", "features"], kind: "request", kinds: ["request"], items, occurrences: 3, distinctAuthors: 3, distinctPRs: 3, paths: ["packages/a.ts"], authors: ["r1", "r2", "r3"] };
+  const dir = repo();
+  try {
+    exportTo(dir, ["agents", "cursor"]);
+    const exported = readFileSync(join(dir, "AGENTS.md"), "utf-8").match(/<!-- reviewlore:start -->[\s\S]*<!-- reviewlore:end -->/)[0];
+    writeAgents([cluster], { targetDir: dir, force: true });
+    const both = readFileSync(join(dir, "AGENTS.md"), "utf-8");
+    assert.ok(both.includes(exported), "the exported section survives");
+    assert.match(both, /<!-- reviewlore:generated:start -->/);
+    // And the other way round: re-exporting leaves the generated section.
+    exportTo(dir, ["agents"]);
+    assert.match(readFileSync(join(dir, "AGENTS.md"), "utf-8"), /<!-- reviewlore:generated:start -->/);
+    // A cursor file export wrote is kept even with --force.
+    const mdc = join(dir, ".cursor/rules/pr-feedback-document-new-options-and-features.mdc");
+    const before = readFileSync(mdc, "utf-8");
+    const out = writeCursor([cluster], { targetDir: dir, force: true });
+    assert.equal(readFileSync(mdc, "utf-8"), before);
+    assert.equal(out.written.length, 0);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("re-exporting keeps $ in rule text literal", () => {
+  const dir = repo();
+  try {
+    const file = join(dir, ".claude/rules/pr-feedback-document-new-options-and-features.md");
+    writeFileSync(file, readFileSync(file, "utf-8").replace(/^(When a PR adds [^\n]*)$/m, (line) => `${line} Write \`$$HOME\`, \`$&\` and \`$'\\t'\` literally.`));
+    exportTo(dir, ["agents"]);
+    exportTo(dir, ["agents"]);
+    assert.match(readFileSync(join(dir, "AGENTS.md"), "utf-8"), /Write `\$\$HOME`, `\$&` and `\$'\\t'` literally\./);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

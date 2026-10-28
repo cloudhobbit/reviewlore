@@ -40,7 +40,7 @@ reaches an enterprise server or the reverse:
 | Host | Order |
 |---|---|
 | github.com, GHE.com | `--token`, `GH_TOKEN`, `GITHUB_TOKEN`, `gh auth token --hostname <host>` |
-| GitHub Enterprise Server | `--token`, `GH_ENTERPRISE_TOKEN`, `GITHUB_ENTERPRISE_TOKEN`, `GITHUB_TOKEN` only inside Actions on that same server, `gh auth token --hostname <host>` |
+| GitHub Enterprise Server, or any other host (e.g. an `--api-url` on an intranet name) | `--token`, `GH_ENTERPRISE_TOKEN`, `GITHUB_ENTERPRISE_TOKEN`, `GITHUB_TOKEN` only inside Actions on that same server, `gh auth token --hostname <host>` |
 
 If you use the GitHub CLI, `gh auth login --hostname <host>` is all it
 takes. Public repos need the `public_repo` scope; private repos need
@@ -59,7 +59,12 @@ Nested groups are fine (`group/sub/project`). The token comes from
 `--token`, then `GITLAB_TOKEN`, then `GITLAB_ACCESS_TOKEN` — a personal
 access token with the `read_api` scope, needed even for public projects
 because GitLab doesn't serve merge-request comments anonymously — and a
-GitHub token is never used for GitLab. Merge-request discussions map onto the same comment shape, so
+GitHub token is never used for GitLab. `GITLAB_TOKEN` is sent only to
+gitlab.com, to the host in `GITLAB_HOST` (glab's variable: set
+`GITLAB_HOST=gitlab.acme.corp` for a self-managed instance), or, inside
+GitLab CI, to the job's own instance — never to whatever host a
+checkout's `origin` names. It goes as an `Authorization: Bearer` header,
+which isn't forwarded if the server redirects elsewhere. Merge-request discussions map onto the same comment shape, so
 everything downstream works unchanged; GitLab has no review bodies or
 "changes requested" state, so nothing is weighted by review state, and
 fetches don't resume yet (`--time-budget` is ignored). Bitbucket isn't
@@ -319,9 +324,11 @@ the files already in the target) or `all`.
 | `windsurf` | Managed block in `.windsurfrules` |
 
 Managed sections sit between `reviewlore` start/end marker
-comments (`<!-- reviewlore:start -->` in markdown, `# >>>
-reviewlore start` in `.windsurfrules`); text outside the markers
-is never touched.
+comments (`<!-- reviewlore:start -->` in markdown,
+`<!-- reviewlore:generated:start -->` in `AGENTS.md` so it never
+collides with `reviewlore export --to agents`, `# >>> reviewlore start`
+in `.windsurfrules`); text outside the markers is never touched, and
+nothing `export` wrote is overwritten, even with `--force`.
 
 A generated Claude rule:
 
@@ -560,7 +567,8 @@ that refreshes the corpus on a schedule and opens a PR with the
 | `GH_ENTERPRISE_TOKEN`, `GITHUB_ENTERPRISE_TOKEN` | Token for GitHub Enterprise Server |
 | `GH_HOST` | GitHub host when there's no git remote to go by |
 | `NODE_EXTRA_CA_CERTS` | Extra CA certificates (an Enterprise Server with an internal CA) |
-| `GITLAB_TOKEN`, `GITLAB_ACCESS_TOKEN` | Token for GitLab (`read_api` scope) |
+| `GITLAB_TOKEN`, `GITLAB_ACCESS_TOKEN` | Token for GitLab (`read_api` scope); sent to gitlab.com or `GITLAB_HOST` only |
+| `GITLAB_HOST` | Self-managed GitLab host that may receive `GITLAB_TOKEN` |
 | `ANTHROPIC_API_KEY` | Anthropic API key for `--llm` |
 | `REVIEWLORE_MODEL` | Model for `--llm` (default `claude-sonnet-5-5`) |
 | `REVIEWLORE_CACHE_DIR` | Cache location (default `~/.reviewlore`) |
