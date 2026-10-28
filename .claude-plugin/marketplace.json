@@ -1,0 +1,17 @@
+{
+  "name": "reviewlore",
+  "owner": {
+    "name": "cloudhobbit",
+    "url": "https://github.com/cloudhobbit"
+  },
+  "metadata": {
+    "description": "Turn PR review history into rules for Claude Code."
+  },
+  "plugins": [
+    {
+      "name": "reviewlore",
+      "source": "./",
+      "description": "Learn a repo's conventions from its PR review history and write them as path-scoped Claude Code rules."
+    }
+  ]
+}

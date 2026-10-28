@@ -1,0 +1,44 @@
+{
+  "$schema": "Each entry: a rule a human reviewer would expect the tool to surface from typescript-repo.json. `keywords` is the set of words a generated rule must mention to count as a match; `must_cite_prs` lists PRs that must appear in citations.",
+  "expected_rules": [
+    {
+      "id": "avoid-any",
+      "summary": "Avoid `any` types; prefer `unknown`",
+      "keywords": ["any", "unknown"],
+      "must_cite_prs": [1, 2, 3, 4],
+      "priority": "high"
+    },
+    {
+      "id": "add-tests-for-edge-cases",
+      "summary": "Add tests for edge cases (null, empty, boundary)",
+      "keywords": ["test", "edge", "case"],
+      "must_cite_prs": [5, 6, 7, 8],
+      "priority": "high"
+    },
+    {
+      "id": "reuse-existing-helpers",
+      "summary": "Reuse existing helpers in src/utils; don't duplicate",
+      "keywords": ["helper", "duplicate", "utils"],
+      "must_cite_prs": [9, 10, 11],
+      "priority": "medium"
+    }
+  ],
+  "expected_false_positives": [
+    {
+      "id": "pr-author-self-comments",
+      "reason": "Comment 30 is the PR author explaining their own code, not reviewer feedback. Must NOT generate a rule from it."
+    },
+    {
+      "id": "bot-noise",
+      "reason": "Comment 32 is a dependabot bump message. Must NOT cluster."
+    },
+    {
+      "id": "resolved-thread-rule",
+      "reason": "Comments 50-51 form a resolved thread (PR author says 'fixed'). Should be dropped — does NOT add to the 'avoid-any' cluster's citations."
+    },
+    {
+      "id": "one-off-observation",
+      "reason": "Comment 40 is a single comment on a specific file. With default thresholds (occurrences>=3), should NOT become a rule."
+    }
+  ]
+}

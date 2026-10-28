@@ -1,0 +1,30 @@
+{
+  "name": "reviewlore",
+  "version": "0.3.0",
+  "description": "Learn a repo's conventions from its PR review history: Claude turns recurring reviewer feedback into path-scoped .claude/rules, and an MCP server answers \"what do reviewers usually say about this file?\".",
+  "author": {
+    "name": "Apoorv Mittal",
+    "url": "https://github.com/cloudhobbit"
+  },
+  "homepage": "https://github.com/cloudhobbit/reviewlore#readme",
+  "repository": "https://github.com/cloudhobbit/reviewlore",
+  "license": "MIT",
+  "keywords": [
+    "code-review",
+    "pull-requests",
+    "conventions",
+    "rules"
+  ],
+  "mcpServers": {
+    "reviewlore": {
+      "command": "node",
+      "args": [
+        "${CLAUDE_PLUGIN_ROOT}/cli/reviewlore.mjs",
+        "mcp"
+      ],
+      "env": {
+        "REVIEWLORE_PROJECT_DIR": "${CLAUDE_PROJECT_DIR}"
+      }
+    }
+  }
+}

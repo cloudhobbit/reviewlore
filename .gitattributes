@@ -1,0 +1,6 @@
+# LF everywhere, so shell scripts and test fixtures behave the same on a
+# Windows checkout (core.autocrlf would otherwise turn them into CRLF).
+* text=auto eol=lf
+*.png binary
+*.gif binary
+*.cast -diff

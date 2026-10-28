@@ -1,0 +1,63 @@
+{
+  "name": "reviewlore",
+  "version": "0.3.0",
+  "description": "Turn a repo's PR review history into evidence-cited, path-scoped rules for Claude Code and other AI coding tools. CLI (`reviewlore`) and Claude Code plugin.",
+  "license": "MIT",
+  "author": "Apoorv Mittal (https://github.com/cloudhobbit)",
+  "type": "module",
+  "bin": {
+    "reviewlore": "./cli/reviewlore.mjs"
+  },
+  "files": [
+    "cli",
+    "lib",
+    "README.md",
+    "TROUBLESHOOTING.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "test": "bash test/run-all.sh",
+    "test:node": "node --test test/",
+    "eval": "node eval/run-eval.mjs",
+    "eval:real": "node eval/run-real-eval.mjs --check",
+    "eval:skill": "node eval/skill/check-rules.mjs --gallery",
+    "check:pack": "bash scripts/check-pack.sh",
+    "check:secrets": "bash scripts/check-secrets.sh",
+    "smoke": "bash scripts/smoke-test.sh",
+    "audit:all": "bash scripts/check-pack.sh && bash scripts/check-secrets.sh && bash scripts/smoke-test.sh",
+    "version": "node scripts/update-version.js && git add cli .claude-plugin/plugin.json",
+    "preversion": "bash test/run-all.sh",
+    "prepublishOnly": "bash test/run-all.sh && bash scripts/check-pack.sh && bash scripts/check-secrets.sh && bash scripts/smoke-test.sh"
+  },
+  "dependencies": {
+    "@octokit/rest": "^21.0.0"
+  },
+  "engines": {
+    "node": ">=20.11"
+  },
+  "keywords": [
+    "github",
+    "pull-request",
+    "pr-comments",
+    "code-review",
+    "octokit",
+    "claude",
+    "claude-code",
+    "claude-skills",
+    "cli",
+    "automation"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cloudhobbit/reviewlore.git"
+  },
+  "homepage": "https://github.com/cloudhobbit/reviewlore#readme",
+  "bugs": {
+    "url": "https://github.com/cloudhobbit/reviewlore/issues"
+  },
+  "optionalDependencies": {
+    "@anthropic-ai/sdk": "^1.3.0",
+    "@modelcontextprotocol/sdk": "^1.29.0"
+  }
+}

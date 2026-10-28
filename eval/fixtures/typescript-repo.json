@@ -1,0 +1,37 @@
+{
+  "meta": {
+    "owner": "test", "repo": "ts-app", "since": "2025-01-01T00:00:00Z",
+    "months_back": 6, "fetched_at": "2026-05-17T00:00:00Z",
+    "pr_authors": { "1": "alice", "2": "bob", "3": "carol", "4": "dave", "5": "alice", "6": "bob", "7": "alice", "8": "bob", "9": "carol", "10": "alice", "11": "bob" }
+  },
+  "issue_comments": [
+    { "comment_id": 1,  "pr_number": 1, "author": "reviewer-1", "body": "Please don't use any types here, prefer unknown.",                      "created_at": "2026-01-05T00:00:00Z", "html_url": "u1" },
+    { "comment_id": 2,  "pr_number": 2, "author": "reviewer-2", "body": "Avoid any types in this codebase, use unknown instead.",                  "created_at": "2026-01-10T00:00:00Z", "html_url": "u2" },
+    { "comment_id": 3,  "pr_number": 3, "author": "reviewer-3", "body": "We shouldn't use any types here, please use unknown.",                    "created_at": "2026-01-15T00:00:00Z", "html_url": "u3" },
+    { "comment_id": 4,  "pr_number": 4, "author": "reviewer-1", "body": "Don't use any types - that defeats the purpose of TypeScript.",          "created_at": "2026-02-01T00:00:00Z", "html_url": "u4" },
+
+    { "comment_id": 10, "pr_number": 5, "author": "reviewer-2", "body": "Please add tests for this edge case.",                                    "created_at": "2026-02-05T00:00:00Z", "html_url": "u10" },
+    { "comment_id": 11, "pr_number": 6, "author": "reviewer-3", "body": "Missing tests for the null input case here.",                             "created_at": "2026-02-10T00:00:00Z", "html_url": "u11" },
+    { "comment_id": 12, "pr_number": 7, "author": "reviewer-1", "body": "We should add tests for the empty array case.",                           "created_at": "2026-02-15T00:00:00Z", "html_url": "u12" },
+    { "comment_id": 13, "pr_number": 8, "author": "reviewer-2", "body": "Please add tests covering edge cases.",                                   "created_at": "2026-03-01T00:00:00Z", "html_url": "u13" },
+
+    { "comment_id": 20, "pr_number": 9,  "author": "reviewer-3", "body": "Use the existing helper in src/utils instead of duplicating logic.",     "created_at": "2026-03-10T00:00:00Z", "html_url": "u20" },
+    { "comment_id": 21, "pr_number": 10, "author": "reviewer-1", "body": "Please use the existing helper here, don't duplicate this logic.",      "created_at": "2026-03-15T00:00:00Z", "html_url": "u21" },
+    { "comment_id": 22, "pr_number": 11, "author": "reviewer-2", "body": "Reuse the helper from src/utils - don't reinvent this.",                 "created_at": "2026-04-01T00:00:00Z", "html_url": "u22" },
+
+    { "comment_id": 30, "pr_number": 1, "author": "alice",      "body": "I implemented this because the spec required X behavior.",                "created_at": "2026-01-06T00:00:00Z", "html_url": "u30" },
+    { "comment_id": 31, "pr_number": 5, "author": "alice",      "body": "lgtm",                                                                    "created_at": "2026-02-06T00:00:00Z", "html_url": "u31" },
+    { "comment_id": 32, "pr_number": 2, "author": "dependabot[bot]", "body": "Bumps lodash from 4.17.20 to 4.17.21.",                              "created_at": "2026-01-11T00:00:00Z", "html_url": "u32" },
+
+    { "comment_id": 40, "pr_number": 11, "author": "reviewer-3", "body": "One-off observation about this specific file.",                          "created_at": "2026-04-02T00:00:00Z", "html_url": "u40" }
+  ],
+  "review_comments": [
+    { "comment_id": 50, "pr_number": 1, "author": "reviewer-1", "body": "Avoid any here, use unknown.", "path": "src/api/users.ts", "line": 12, "in_reply_to_id": null, "created_at": "2026-01-05T01:00:00Z", "html_url": "u50" },
+    { "comment_id": 51, "pr_number": 1, "author": "alice",      "body": "Good catch, fixed in next commit.",                "path": "src/api/users.ts", "line": 12, "in_reply_to_id": 50, "created_at": "2026-01-05T02:00:00Z", "html_url": "u51" }
+  ],
+  "review_submissions": [
+    { "review_id": 100, "pr_number": 4, "author": "reviewer-1", "state": "CHANGES_REQUESTED", "body": "Please avoid any types throughout this PR.", "submitted_at": "2026-02-01T01:00:00Z", "html_url": "u100" },
+    { "review_id": 101, "pr_number": 9, "author": "reviewer-3", "state": "CHANGES_REQUESTED", "body": "Use the existing helper, don't duplicate.", "submitted_at": "2026-03-10T01:00:00Z", "html_url": "u101" },
+    { "review_id": 102, "pr_number": 5, "author": "reviewer-2", "state": "APPROVED",          "body": "lgtm",                                       "submitted_at": "2026-02-05T01:00:00Z", "html_url": "u102" }
+  ]
+}

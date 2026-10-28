@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        node: [20, 22, 24]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - name: Ensure jq is installed
+        # Ubuntu images ship with jq today but that is not guaranteed;
+        # macOS does not. Install on both for defensiveness.
+        shell: bash
+        run: |
+          if ! command -v jq >/dev/null; then
+            if [[ "$RUNNER_OS" == "macOS" ]]; then brew install jq;
+            else sudo apt-get update && sudo apt-get install -y jq; fi
+          fi
+          jq --version
+      - run: npm ci
+      - run: bash test/run-all.sh
+      - run: npm run eval
+      - run: npm run eval:real
+      - run: npm run eval:skill
+      - run: bash scripts/check-pack.sh
+      - run: bash scripts/check-secrets.sh
+      - run: bash scripts/smoke-test.sh
+
+  # Windows (Git Bash for the scripts), one Node version.
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - name: Ensure jq is installed
+        run: command -v jq >/dev/null || choco install jq -y
+      - run: npm ci
+      - run: bash test/run-all.sh
+      - run: npm run eval
+      - run: npm run eval:real
+      - run: npm run eval:skill
+      - run: bash scripts/smoke-test.sh

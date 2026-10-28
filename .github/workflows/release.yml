@@ -1,0 +1,66 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  test:
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        node: [20, 22, 24]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - name: Ensure jq is installed
+        shell: bash
+        run: |
+          if ! command -v jq >/dev/null; then
+            if [[ "$RUNNER_OS" == "macOS" ]]; then brew install jq;
+            else sudo apt-get update && sudo apt-get install -y jq; fi
+          fi
+          jq --version
+      - run: npm ci
+      - run: bash test/run-all.sh
+      - run: npm run eval
+      - run: npm run eval:real
+      - run: npm run eval:skill
+      - run: bash scripts/check-pack.sh
+      - run: bash scripts/check-secrets.sh
+      - run: bash scripts/smoke-test.sh
+
+  publish:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          registry-url: "https://registry.npmjs.org"
+      - name: Verify tag matches package.json version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG="$(node -p "require('./package.json').version")"
+          if [ "$TAG" != "$PKG" ]; then
+            echo "❌ Tag ${GITHUB_REF_NAME} does not match package.json version $PKG"
+            echo "   Bump package.json (npm version) before tagging."
+            exit 1
+          fi
+          echo "✅ Tag $TAG matches package.json version $PKG"
+      # npm trusted publishing (OIDC): no stored token. Needs npm >= 11.5.1
+      # and the trusted publisher configured on npmjs.com for this repo and
+      # workflow. Provenance is generated automatically (public repo only).
+      - run: npm install -g npm@^11.5.1
+      - run: npm ci
+      - run: npm publish --access public

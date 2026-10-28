@@ -1,0 +1,17 @@
+test/
+eval/
+docs/
+examples/
+scripts/
+.github/
+.claude/
+.gitignore
+.npmignore
+*.tgz
+*.log
+.DS_Store
+node_modules/
+
+# Output artifacts
+pr-comments-*.json
+pr-comments-*/
