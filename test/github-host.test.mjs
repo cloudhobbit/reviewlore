@@ -5,6 +5,10 @@ import { normalizeHost, hostKind, apiBaseUrl, resolveHost, hostDirName } from ".
 test("hosts: kinds and API base URLs", () => {
   assert.equal(normalizeHost("WWW.GitHub.com"), "github.com");
   assert.equal(normalizeHost("github.com-work"), "github.com");
+  assert.equal(normalizeHost("ssh.github.com"), "github.com", "GitHub's SSH-over-443 host");
+  assert.equal(normalizeHost("github.com:443"), "github.com");
+  assert.equal(normalizeHost("ghe.acme.corp:443"), "ghe.acme.corp");
+  assert.equal(normalizeHost("ghe.acme.corp:8443"), "ghe.acme.corp:8443");
   assert.equal(hostKind("github.com"), "dotcom");
   assert.equal(hostKind("acme.ghe.com"), "ghe.com");
   assert.equal(hostKind("ghe.acme.corp"), "ghes");

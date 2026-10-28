@@ -72,6 +72,11 @@ test("parseRuleText reads paths, title, body, links and provenance", () => {
   const hand = parseRuleText("---\npaths: [\"docs/**\", 'site/**']\n---\n# Docs tone\nWrite in second person.\n", "x.md");
   assert.deepEqual(hand.paths, ["docs/**", "site/**"]);
   assert.equal(hand.generated, false);
+  // PR links on GitHub Enterprise and GitLab count too; other links don't.
+  const hosts = parseRuleText(
+    "# T\n\n- > a\n  — @x on PR #1: https://ghe.corp/acme/app/pull/1#discussion_r1\n" +
+    "- > b\n  — @y on PR #2: https://gitlab.com/g/sub/p/-/merge_requests/2#note_2\n\nSee https://example.com/docs.\n", "x.md");
+  assert.deepEqual(hosts.urls, ["https://ghe.corp/acme/app/pull/1#discussion_r1", "https://gitlab.com/g/sub/p/-/merge_requests/2#note_2"]);
 });
 
 test("searchIndex: rules first, then comments by BM25, with honest support", () => {
@@ -191,6 +196,23 @@ test("an index built in a child process equals one built in-process", async () =
     assert.ok(child.sentenceIndex.postings instanceof Map && child.comments[0].tokens instanceof Set);
     assert.deepEqual(searchIndex(child, "changeset"), searchIndex(local, "changeset"));
     assert.deepEqual(feedbackForPath(child, "src/api", { now: Date.parse(t(28)) }), feedbackForPath(local, "src/api", { now: Date.parse(t(28)) }));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a child that dies without sending the index rejects instead of hanging", async () => {
+  const { buildInChild } = await import("../lib/mcp-tools.mjs");
+  const dir = mkdtempSync(join(tmpdir(), "child-dies-"));
+  try {
+    // As when the builder runs out of memory or is killed: no message, a signal.
+    const killed = join(dir, "killed.mjs");
+    writeFileSync(killed, 'process.on("message", () => process.kill(process.pid, "SIGKILL"));\n');
+    await assert.rejects(buildInChild("unused.json", [], { script: killed }), /index build failed \(SIGKILL\)/);
+    // A clean exit with no message too.
+    const quits = join(dir, "quits.mjs");
+    writeFileSync(quits, 'process.on("message", () => process.exit(0));\n');
+    await assert.rejects(buildInChild("unused.json", [], { script: quits }), /index build failed \(exit 0\)/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

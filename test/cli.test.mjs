@@ -316,6 +316,10 @@ test("reviewlore generate end-to-end on a fixture", () => {
     assert.ok(existsSync(join(targetPath, ".claude", "rules")));
     const files = readdirSync(join(targetPath, ".claude", "rules"));
     assert.ok(files.length >= 1, "expected at least one rule file");
+    // Recorded for `rules status`, like `run`'s rules.
+    const manifest = JSON.parse(readFileSync(join(targetPath, ".claude", "reviewlore-rules.json"), "utf-8"));
+    assert.deepEqual(Object.keys(manifest.rules).sort(), files.filter((f) => f.startsWith("pr-feedback-")).sort());
+    assert.equal(manifest.repo, "x/y");
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }
@@ -688,4 +692,28 @@ test("candidates --raw prints a header line then one comment per line", () => {
     assert.match(r.stderr, /review comments after filtering/);
     assert.equal(toolkit(["candidates", "--owner", "myorg", "--repo", "myrepo", "--raw", "--budget", "10"]).status, 1);
   });
+});
+
+test("run --demo runs the bundled demo and never fetches or writes to the repo; other commands refuse --demo", async () => {
+  const { gitOnlyDir } = await import("./helpers/git-only.mjs");
+  const { delimiter } = await import("node:path");
+  const dir = mkdtempSync(join(tmpdir(), "run-demo-"));
+  try {
+    spawnSync("git", ["init", "-q", dir]);
+    spawnSync("git", ["-C", dir, "remote", "add", "origin", "git@github.com:acme/widgets.git"]);
+    // No token anywhere and no `gh`: a real run would stop at "No GitHub token".
+    const env = { PATH: [gitOnlyDir(dir), dirname(process.execPath)].join(delimiter), REVIEWLORE_CACHE_DIR: join(dir, ".cache"), GITHUB_TOKEN: "" };
+    for (const args of [["run", "--demo"], ["--demo"]]) {
+      const r = spawnSync(process.execPath, [TOOLKIT_BIN, ...args], { cwd: dir, encoding: "utf-8", env });
+      assert.equal(r.status, 0, r.stderr);
+      assert.doesNotMatch(r.stderr, /Detected acme\/widgets|No GitHub token/);
+      assert.match(r.stdout, /pr-feedback-/);
+    }
+    assert.ok(!existsSync(join(dir, ".claude")), "nothing written into the repo");
+    const doctor = spawnSync(process.execPath, [TOOLKIT_BIN, "doctor", "--demo"], { cwd: dir, encoding: "utf-8", env });
+    assert.equal(doctor.status, 1);
+    assert.match(doctor.stderr, /--demo works with `run`, `generate` and `candidates`, not `doctor`/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

@@ -6,7 +6,7 @@
   "author": "Apoorv Mittal (https://github.com/cloudhobbit)",
   "type": "module",
   "bin": {
-    "reviewlore": "./cli/reviewlore.mjs"
+    "reviewlore": "cli/reviewlore.mjs"
   },
   "files": [
     "cli",

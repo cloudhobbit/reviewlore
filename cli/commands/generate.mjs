@@ -9,6 +9,7 @@ import { getRenderer, resolveFormats, rendererSummary } from "../../lib/renderer
 import { synthesiseAll } from "../../lib/llm.mjs";
 import { loadPreviousState, reportDiffSinceLastRun, writeCurrentState } from "../../lib/diff.mjs";
 import { applyPreset, presetSummary } from "../../lib/presets.mjs";
+import { recordFiles, urlDates } from "../../lib/rules-manifest.mjs";
 
 const VERSION = "0.3.0";
 
@@ -267,6 +268,17 @@ export async function main(argv) {
 
   // Persist state for next run's diff.
   writeCurrentState(resolvedTarget, kept);
+
+  // Track the rule files written, as `run` does, so `rules status` checks
+  // them instead of listing them as written before 0.3.
+  const ruleNames = written.filter((w) => w.format === "claude").map((w) => w.path.split(/[\\/]/).pop());
+  if (ruleNames.length && !demoTarget) {
+    recordFiles(resolvedTarget, ruleNames, {
+      generator: synth ? "heuristic+llm" : "heuristic",
+      byUrl: urlDates(data),
+      ctx: { owner: data.meta?.owner, repo: data.meta?.repo, source: "file", fetchedAt: data.meta?.last_fetched_at ?? data.meta?.fetched_at ?? null },
+    });
+  }
 
   process.stderr.write(`\n✅ Wrote ${written.length} file(s) [format(s): ${formatNames.join(", ")}] into ${resolvedTarget}\n`);
   for (const w of written) {

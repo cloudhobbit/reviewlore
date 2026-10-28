@@ -235,6 +235,18 @@ async function main(argv) {
 
   // Subcommands: "init" (wizard), "publish-corpus", "run" (default).
   const subcommand = args._[0] ?? "run";
+  // --demo never touches the user's repo or the network. `run --demo` (and a
+  // bare `reviewlore --demo`) is `generate --demo`; elsewhere it's refused
+  // rather than ignored, which used to start a real run.
+  if (args.demo && subcommand === "run") {
+    process.stderr.write("Demo: the bundled sample through the heuristic pipeline (`generate --demo`); nothing is fetched or written to your repo.\n\n");
+    const { main: runStage } = await import(DELEGATED.generate);
+    return runStage(["--demo"]);
+  }
+  if (args.demo && subcommand !== "candidates") {
+    process.stderr.write(`Error: --demo works with \`run\`, \`generate\` and \`candidates\`, not \`${subcommand}\`.\n`);
+    return 1;
+  }
   if (subcommand === "init") {
     try {
       await runInitWizard({ targetHint: args.target ?? "." });
@@ -396,7 +408,8 @@ async function main(argv) {
   }
   // A corpus without `host` is from github.com (written before 0.3).
   const corpusRepo = corpusOnDisk?.meta?.owner && repoLabel(corpusOnDisk.meta.owner, corpusOnDisk.meta.repo, corpusOnDisk.meta.host ?? "github.com");
-  if (corpusRepo && corpusRepo !== repoLabel(owner, repo, host)) {
+  // GitHub and GitLab names are case-insensitive: Acme/App is acme/app.
+  if (corpusRepo && corpusRepo.toLowerCase() !== repoLabel(owner, repo, host).toLowerCase()) {
     process.stderr.write(`Ignoring ${corpusOnDisk.path}: it holds ${corpusRepo}, not ${repoLabel(owner, repo, host)}.\n`);
     corpusOnDisk = null;
   }
@@ -427,7 +440,7 @@ async function main(argv) {
           `Topping up local cache from ${host} (since ${since.toISOString()}) so the next \`publish-corpus\` is fresh...\n`,
         );
         const fresh = await fetcher.fetch({
-          since, monthsBack, out: process.stderr, mode: process.env.REVIEWLORE_FETCH, concurrency: fetchConcurrency(), checkpoint: true,
+          since, keepSince: sinceFromMonths(monthsBack), monthsBack, out: process.stderr, mode: process.env.REVIEWLORE_FETCH, concurrency: fetchConcurrency(), checkpoint: true,
         });
         const path = mergeIntoCache(owner, repo, fresh, host);
         process.stderr.write(`📦 Cache refreshed: ${path}\n`);
@@ -466,7 +479,7 @@ async function main(argv) {
     process.stderr.write(`\n[1/2] Fetching ${repoLabel(owner, repo, host)} (range: ${since.toISOString()} → now)...\n\n`);
     try {
       data = await fetcher.fetch({
-        since, monthsBack, out: process.stderr, mode: process.env.REVIEWLORE_FETCH, concurrency: fetchConcurrency(), checkpoint: useCache,
+        since, keepSince: sinceFromMonths(monthsBack), monthsBack, out: process.stderr, mode: process.env.REVIEWLORE_FETCH, concurrency: fetchConcurrency(), checkpoint: useCache,
       });
       if (useCache) {
         const path = mergeIntoCache(owner, repo, data, host);
